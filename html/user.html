@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<link href="http://cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+		<link rel="stylesheet" href="../css/app.css" />
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+			<h1 class="mui-title">我的</h1>
+			<a id="logout" href="javascript:logout();" class="mui-pull-right" style="line-height: 44px; margin-right: 10px;barcode_scan.html">登出</a>
+		</header>
+		<div class="loading" style="margin-top:50px;">正在加载中...</div>
+		<div class="mui-content mui-hidden">
+			<div class="mui-scroll">
+				<div class="panel-body">
+			        <div class="media">
+			            <div class="media-left">
+			                <img class="big-avatar" id="avatar" src="" title="朋也">
+			            </div>
+			            <div class="media-body">
+			                <h3 class="media-heading" id="nickname"></h3>
+		                    <p class="signature"></p>
+			                <p>
+			                    <span class="glyphicon glyphicon-euro"></span>
+			                    积分: <span id="score"></span>
+			                </p>
+			                <p>
+			                    <span class="glyphicon glyphicon-log-in"></span>
+			                    注册时间<span id="signTime"></span> &nbsp;&nbsp;
+			                </p>
+			            </div>
+			        </div>
+			    </div>
+				<ul class="mui-table-view" id="topics_ul">
+				</ul>
+				<ul class="mui-table-view" id="collets_ul">
+				</ul>
+			</div>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/jquery.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/moment.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/locale/zh-cn.js"></script>
+		<script src="../js/common.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			var index;
+			mui.init();
+			mui.plusReady(function(){
+				//获得主页面webview引用；
+				index = plus.webview.currentWebview().opener();
+				if(isLogin()) {
+					mui.fire(index, "hideCreateTopic");
+				}
+				initData();
+			});
+			
+			function initData() {
+				mui.ajax({
+					type: "post",
+					url: _baseUrl + "/api/user",
+					data: {
+						token: plus.storage.getItem(_user_token)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						$(".loading").addClass("mui-hidden");
+						$(".mui-content").removeClass("mui-hidden");
+						var user = data.detail.user;
+						var topics = data.detail.topics;
+						var collects = data.detail.collects;
+						$("#avatar").attr("src", user.avatar);
+						$("#nickname").html(user.nickname);
+						if(user.signature) $(".signature").html('<i>“ '+user.signature+' ” </i>');
+						$("#score").html("积分：" + user.score);
+						$("#signTime").html(moment(user.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow());
+						var topics_ul = $("#topics_ul");
+						topics_ul.html('<li class="mui-table-view-divider">最近话题</li>');
+						mui.each(topics, function(index, _data){
+							var span = getTopicTab(_data);
+							var html = '<li class="mui-table-view-cell">' +
+							    '<div class="media">' +
+							        '<div class="media-left">' +
+						                '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+							        '</div>' +
+							        '<div class="media-body">' +
+							            '<div class="media-heading item-title">' +
+							                '<a href="javascript:topic_detail(\'' + _data.id + '\');">'+_data.title+'</a>' +
+							            '</div>' +
+							            '<p class="small-fade">' +
+							                  '<a class="node" href="javascript:;">'+getTopicTab(_data)+'</a>' +
+							                '• '+_data.reply_count+'个回复 • '+_data.view+'次浏览 • ' + moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow() +
+							            '</p>' +
+							        '</div>' +
+							    '</div>' +
+							'</li>';
+							topics_ul.append(html);
+						});
+						var collets_ul = $("#collets_ul");
+						collets_ul.html('<li class="mui-table-view-divider">收藏话题</li>');
+						mui.each(collects, function(index, _data){
+							var span = getTopicTab(_data);
+							var html = '<li class="mui-table-view-cell">' +
+							    '<div class="media">' +
+							        '<div class="media-left">' +
+						                '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+							        '</div>' +
+							        '<div class="media-body">' +
+							            '<div class="media-heading item-title">' +
+							                '<a href="javascript:topic_detail(\'' + _data.id + '\');">'+_data.title+'</a>' +
+							            '</div>' +
+							            '<p class="small-fade">' +
+							                  '<a class="node" href="javascript:;">'+getTopicTab(_data)+'</a>' +
+							                '• '+_data.reply_count+'个回复 • '+_data.view+'次浏览 • ' + moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow() +
+							            '</p>' +
+							        '</div>' +
+							    '</div>' +
+							'</li>';
+							collets_ul.append(html);
+						});
+					}
+				});
+			}
+			function logout() {
+				plus.storage.removeItem(_user_nickname);
+				plus.storage.removeItem(_user_token);
+				plus.runtime.restart();
+			}
+		</script>
+	</body>
+
+</html>

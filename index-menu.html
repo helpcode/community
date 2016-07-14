@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		<link rel="stylesheet" href="css/mui.min.css">
+		<style type="text/css">
+			body,
+			.mui-content {
+				background-color: #333;
+				color: #fff;
+			}
+			p {
+				margin-bottom: 0px;
+			}
+			.title {
+				margin: 10px 0;
+				text-align: center;
+			}
+			.menu-name {
+				padding-left: 15px;
+				font-size: 16px;
+				background-color: #3b3b3b;
+				height: 43px;
+				line-height: 43px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="mui-content">
+			<div class="title">
+				<img src="img/menu-logo.png" width="180">
+			</div>
+			<!--<ul class="mui-table-view mui-table-view-inverted mui-hidden" id="login_ul">
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="login" href="html/barcode_scan.html">
+						登录
+					</a>
+				</li>
+			</ul>-->
+			<ul class="mui-table-view mui-table-view-inverted mui-hidden" id="user_ul">
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="user" href="html/user.html" id="nickname" tab="my"></a>
+				</li>
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="user" href="html/msg.html" tab="msg">
+						我的消息
+						<span class="mui-badge mui-badge-warning mui-hidden"></span>
+					</a>
+				</li>
+			</ul>
+			<p class="menu-name">话题</p>
+			<ul class="mui-table-view mui-table-view-inverted" id="ul_topics">
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="topic" href="html/list.html" tab="all">
+						最新
+					</a>
+				</li>
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="topic" href="html/list.html" tab="good">
+						精华
+					</a>
+				</li>
+			</ul>
+			<p class="menu-name">其他</p>
+			<ul class="mui-table-view mui-table-view-inverted">
+				<li class="mui-table-view-cell">
+					<a class="mui-navigate-right" type="setting" href="html/setting.html" tab="setting">
+						设置
+					</a>
+				</li>
+			</ul>
+		</div>
+		<script src="js/mui.min.js"></script>
+		<script src="js/jquery.min.js"></script>
+		<script src="js/common.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			var aniShow = "slide-in-right";
+			//关于backbutton和menubutton两个按键的说明，在iOS平台不存在，故需隐藏
+			if (!mui.os.android) {
+				var span = document.getElementById("android-only");
+				if (span) {
+					span.style.display = "none";
+				}
+				aniShow = "pop-in";
+			}
+			var index = null;
+			mui.plusReady(function() {
+				//获取未读消息数量 5分钟执行一次
+				if(isLogin()) {
+					getCountNotRead();
+					setInterval(function(){
+						getCountNotRead();
+					}, countnotreadtime);
+				}
+				getSection();
+				//获得主页面webview引用；
+				index = plus.webview.currentWebview().opener();
+				//判断用户是否登录
+				if(isLogin()) {
+					document.getElementById('nickname').innerHTML = plus.storage.getItem(_user_nickname);
+					document.getElementById('login_ul').className = "mui-table-view mui-table-view-inverted mui-hidden";
+					document.getElementById('user_ul').className = "mui-table-view mui-table-view-inverted mui-block";
+				
+					//index show createTopic
+					mui.fire(index, "showCreateTopic", {});
+				} else {
+					document.getElementById('login_ul').className = "mui-table-view mui-table-view-inverted mui-block";
+					document.getElementById('user_ul').className = "mui-table-view mui-table-view-inverted mui-hidden";
+				}
+			});
+			mui('.mui-table-view').on('tap', 'a', function() {
+				var type = this.getAttribute("type");
+				var _tab = this.getAttribute("tab");
+				var id = this.getAttribute("href");
+				var href = this.href;
+				if (type == "login") {
+					var bts = ["取消", "好的"];
+					plus.nativeUI.confirm("PC端登录jfinalbbs.com后，扫描设置页面的Access Token二维码即可完成登录", function(e) {
+						var i = e.index;
+						if(i == 1) {
+							mui.openWindow({
+								id: 'barcode_scan.html',
+								url: id
+							});
+						}
+					}, "扫码登录", bts);
+				} else {
+					if(type == 'topic') {
+						var list = plus.webview.getWebviewById('list');
+						plus.storage.setItem(_tab_, _tab);
+						list.loadURL(href);
+						list.reload();
+					} else {
+						if(type == 'user' && _tab == 'msg') {
+							$(".mui-badge-warning").addClass("mui-hidden");
+							$(".mui-badge-warning").html("");
+						}
+						mui.openWindow({
+							id: id,
+							url: id
+						});
+					}
+					close();
+				}
+			});
+			/**
+			 * 关闭侧滑菜单
+			 */
+			function close() {
+				mui.fire(mui.currentWebview.opener(), "menu:close");
+			}
+			//点击“关闭侧滑菜单”按钮处理逻辑
+			//			document.getElementById("close-btn").addEventListener("tap",close);
+			//在android4.4.2中的swipe事件，需要preventDefault一下，否则触发不正常
+			window.addEventListener('dragstart', function(e) {
+				mui.gestures.touch.lockDirection = true; //锁定方向
+				mui.gestures.touch.startDirection = e.detail.direction;
+			});
+			window.addEventListener('dragleft', function(e) {
+				if (!mui.isScrolling) {
+					e.detail.gesture.preventDefault();
+				}
+			});
+			 //监听左滑事件，若菜单已展开，左滑要关闭菜单；
+			window.addEventListener("swipeleft", function(e) {
+				if (Math.abs(e.detail.angle) > 170) {
+					close();
+				}
+			});
+			window.addEventListener("scanresult", function(e) {
+				var result = e.detail.result;
+				if(result) {
+					plus.storage.setItem(_user_token, result);
+					getCountNotRead();
+					setInterval(function(){
+						getCountNotRead();
+					}, countnotreadtime);
+					mui.ajax({
+						url: _baseUrl + '/api/user/userinfo',
+						type: 'get',
+						dataType: 'json',
+						async: false,
+						data: {
+							token: result
+						},
+						success: function(data) {
+							if(data.code == 200) {
+								var nickname = data.detail.nickname;
+								plus.storage.setItem(_user_nickname, nickname);
+								document.getElementById('nickname').innerHTML = nickname;
+								document.getElementById('login_ul').className = "mui-table-view mui-table-view-inverted mui-hidden";
+								document.getElementById('user_ul').className = "mui-table-view mui-table-view-inverted mui-block";
+								mui.fire(mui.currentWebview.opener(), "showCreateTopic", {});
+							} else {
+								plus.nativeUI.alert(data.description);
+							}
+						}
+					})
+				}
+			});
+			
+			window.addEventListener("logout", function(e) {
+				plus.storage.removeItem(_user_nickname);
+				plus.storage.removeItem(_user_token);
+				document.getElementById('login_ul').className = "mui-table-view mui-table-view-inverted mui-block";
+				document.getElementById('user_ul').className = "mui-table-view mui-table-view-inverted mui-hidden";
+			});
+			
+			function getSection() {
+				mui.ajax({
+					type: "get",
+					url: _baseUrl + "/api/section",
+					data: {},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						var ul_topics = $("#ul_topics");
+						$.each(data.detail, function(index, _data) {
+							var html = '<li class="mui-table-view-cell">' +
+							    '<a class="mui-navigate-right" type="topic" href="html/list.html" tab="'+_data.tab+'">' +
+							        _data.name +
+							    '</a>' +
+							'</li>';
+							ul_topics.append(html);
+						});
+					}
+				});
+			}
+			
+			function getCountNotRead() {
+				mui.ajax({
+					type: "get",
+					url: _baseUrl + "/api/notification/countnotread",
+					data: {
+						token: plus.storage.getItem(_user_token)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						if(data.code == 200) {
+							if(data.detail > 0) {
+								$(".mui-badge-warning").removeClass("mui-hidden");
+								$(".mui-badge-warning").html(data.detail);
+							}
+						}
+					}
+				});
+			}
+		</script>
+	</body>
+
+</html>

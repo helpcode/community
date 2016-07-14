@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<link href="../css/mui.listpicker.css" rel="stylesheet" />
+		<link href="../css/mui.poppicker.css" rel="stylesheet" />
+		<link rel="stylesheet" href="../css/app.css" />
+		<link rel="stylesheet" href="../wangEditor/css/wangEditor.min.css" />
+		<!--App自定义的css-->
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+			<h1 class="mui-title">创建话题</h1>
+			<a href="javascript:save();" class="mui-pull-right" style="line-height: 44px;margin-right: 5px;">提交</a>
+		</header>
+		<div class="mui-content" style="margin: 10px;">
+			<div class="form-group">
+				<input type="hidden" id="sid" value="8">
+				<input type="text" id="showSectionPicker" disabled="disabled" value="灌水" class="form-control">
+			</div>
+			<div class="form-group">
+				<input type="text" id="title" value="" placeholder="标题10字以上" class="form-control">
+			</div>
+			<div class="form-group">
+				<textarea placeholder="内容" rows="5" id="content" name="content" style="height: 400px;" class="form-control"></textarea>
+			</div>
+			<!--<div class="mui-input-group">
+				<div class="mui-input-row">
+					<input type="hidden" id="sid" value="8">
+					<input type="text" id="showSectionPicker" disabled="disabled" value="灌水">
+				</div>
+				<div class="mui-input-row">
+					<input type="text" id="title" value="" placeholder="标题10字以上">
+				</div>
+			</div>
+			<div class="mui-input-row">
+				<textarea placeholder="内容" rows="5" id="content" name="content" style="height: 400px;"></textarea>
+			</div>-->
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/jquery.min.js"></script>
+		<script src="../js/mui.listpicker.js"></script>
+		<script src="../js/mui.poppicker.js"></script>
+		<script src="../js/common.js"></script>
+		<script src="../wangEditor/js/wangEditor.min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			mui.init();
+			var sectionPicker = new mui.PopPicker();
+			var pickerData = [];
+			mui.plusReady(function() {
+				getSection();
+				var editor = new wangEditor("content");
+        			// 自定义菜单
+		        editor.config.menus = [
+		            'bold',
+		            'underline',
+		            'italic',
+		            'forecolor',
+		            'bgcolor',
+		            'quote',
+		            'fontsize',
+		            'head',
+		            'unorderlist',
+		            'img'
+		        ];
+		        editor.config.uploadImgUrl = _baseUrl + '/upload';
+		        editor.create();
+			});
+			function getSection() {
+				mui.ajax({
+					url: _baseUrl + '/api/section',
+					dataType: 'json',
+					async: true,
+					type: 'get',
+					success: function(data) {
+						if(data.code == 200) {
+							$.each(data.detail, function(index, _data) {
+								pickerData.push({value: _data.id, text: _data.name});
+							});
+							sectionPicker.setData(pickerData);
+						} else {
+							plus.nativeUI.alert(data.description);
+						}
+					}
+				})
+			}
+			var showSectionPickerButton = document.getElementById('showSectionPicker');
+			showSectionPickerButton.addEventListener('tap', function(event) {
+				sectionPicker.show(function(items) {
+					console.log(items[0].value);
+					document.getElementById("sid").value = items[0].value;
+					showSectionPickerButton.value = items[0].text;
+				});
+			}, false);
+		
+			function save() {
+				var sid = document.getElementById("sid");
+				var title = document.getElementById("title");
+				var content = document.getElementById("content");
+				if(trim(title.value).length == 0) {
+					mui.toast("标题不能为空");
+				} else if(trim(content.value).length == 0) {
+					mui.toast("请输入内容");
+				} else {
+					mui.ajax({
+						type: "post",
+						url: _baseUrl + "/api/topic/create",
+						data: {
+							token: plus.storage.getItem(_user_token),
+							title: title.value,
+							content: content.value,
+							sid: sid.value
+						},
+						async: true,
+						dataType: "json",
+						success: function(data) {
+							if(data.code == 200) {
+								title.value = "";
+								content.value = "";
+								topic_detail(data.detail.id);
+							} else {
+								mui.toast(data.description);
+							}
+						}
+					});
+				}
+			}
+		</script>
+	</body>
+
+</html>

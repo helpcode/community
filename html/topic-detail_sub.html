@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<link href="http://cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="../wangEditor/css/wangEditor.min.css"/>
+		<link rel="stylesheet" type="text/css" href="../css/app.css"/>
+	</head>
+
+	<body>
+		<div class="loading" style="margin-top: 5px;">正在加载...</div>
+		<div class="mui-content mui-hidden">
+			<div class="mui-content-padded" style="margin-bottom: 0; padding: 5px 5px 0 5px;">
+				<div id="topic-title"></div>
+				<p style="font-size: 12px;color: #838383;margin-bottom: 5px;">
+					<span id="topic-author"></span>
+					&nbsp;•&nbsp;<span id="topic-intime"></span>
+					&nbsp;•&nbsp;<span id="topic-view"></span>
+					&nbsp;•&nbsp;<span id="topic-sectionname"></span>
+				</p>
+				<div class="divide" style="margin-bottom: 10px;"></div>
+				<div id="topic_content"></div>
+			</div>
+			<div style="background-color: #F6F6F6; padding: 10px;">
+				<span id="reply_count"></span>个回复
+			</div>
+			<ul class="mui-table-view" id="reply_list" style="padding: 8px; margin-bottom: 37px;">
+			</ul>
+			<nav class="mui-bar mui-bar-footer mui-hidden" id="reply_nav">
+				<input type="text" id="reply_input" onkeyup="submitReply(event)" placeholder="回复 (回车提交)"/>
+			</nav>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/jquery.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/moment.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/locale/zh-cn.js"></script>
+		<script src="../wangEditor/js/wangEditor.min.js"></script>
+		<script src="../js/common.js"></script>
+
+		<script charset="utf-8">
+			mui.init({
+				gestureConfig: {
+					doubletap: true
+				},
+				swipeBack: true //启用右滑关闭功能
+			});
+			
+			var topic, replies, parent, quote = "";
+			mui.plusReady(function() {
+				parent = plus.webview.currentWebview().opener();
+				var tid = plus.storage.getItem(_topic_id);
+				if(isLogin()) {
+					document.getElementById("reply_nav").className = "mui-bar mui-bar-footer";
+				}
+				mui.ajax({
+					type: "get",
+					url: _baseUrl + "/api/topic/" + tid,
+					data: {
+						token: plus.storage.getItem(_user_token)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						$(".loading").addClass('mui-hidden');
+						$(".mui-content").removeClass('mui-hidden');
+						if(isLogin()) {
+							if(data.detail.collect != null) {
+								mui.fire(parent, "showStar");
+								mui.fire(parent, "starFilled");
+								mui.fire(parent, "collect");
+							} else {
+								mui.fire(parent, "showStar");
+								mui.fire(parent, "notCollect");
+							}
+						}
+						topic = data.detail.topic;
+						$("#topic-author").html(topic.nickname);
+						$("#topic-intime").html(moment(topic.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow());
+						$("#topic-title").html(topic.title);
+						$("#reply_count").html(data.detail.replies.length);
+						$("#topic_content").append(topic.content);
+						$("#topic-view").append(topic.view + '次浏览');
+						$("#topic-sectionname").append(topic.sectionName);
+						var reply_list = $("#reply_list");
+						reply_list.html("");
+						$.each(data.detail.replies, function(index, _data) {
+							var html = '<li class="mui-table-view-cell">' +
+								'<div class="media" style="margin:0 -12px;">' +
+								    '<div class="media-left">' +
+							            '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+								    '</div>' +
+								    '<div class="media-body">' +
+								        '<div class="media-heading">' +
+								            '<p class="small-fade">' +
+								                '<a href="'+_baseUrl+'/user/'+_data.author_id+'">'+_data.nickname+'</a>' +
+								                '<span>'+moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow()+'</span>' +
+								                '<span class="pull-right">'+(index+1)+'楼</span>' +
+								            '</p>' +
+								        '</div>' +
+								        '<div class="media-body reply_content">' +
+								            _data.content +
+								        '</div>' +
+								    '</div>' +
+								'</div>' +
+							'</li>';
+							reply_list.append(html);
+						});
+						//关闭等待框
+						plus.nativeUI.closeWaiting();
+						//显示当前页面
+						mui.currentWebview.show();
+					}
+				});
+			});
+			
+			mui('#topic_content').on('tap', 'a', function() {
+				var href=this.getAttribute("href");
+				mui.openWindow({
+					id: 'embed.html',
+					url: 'embed.html',
+					extras: {
+						url: href
+					}
+				})
+			});
+			
+			mui('#reply_list').on('tap', 'a', function() {
+				var href=this.getAttribute("href");
+				mui.openWindow({
+					id: 'embed.html',
+					url: 'embed.html',
+					extras: {
+						url: href
+					}
+				})
+			});
+			//敲击顶部导航，内容区回到顶部
+//			document.querySelector('header').addEventListener('doubletap', function() {
+//				plus.webview.getWebviewById('detail').evalJS('mui.scrollTo(0, 100)');
+//			});
+			
+			function submitReply(e) {
+				if(e.keyCode == 13) {
+					var reply_input = $("#reply_input");
+					var reply_list = $("#reply_list");
+					if($.trim(reply_input.val()) == "") {
+						mui.toast("回复内容不能为空");
+					} else {
+						mui.ajax({
+							type: "post",
+							url: _baseUrl + "/api/reply/create",
+							data: {
+								token: plus.storage.getItem(_user_token),
+								tid: plus.storage.getItem(_topic_id),
+								content: reply_input.val() + (plus.storage.getItem(reply_weiba_active) == 'true' ? reply_weiba : "")
+							},
+							async: true,
+							dataType: "json",
+							success: function(data) {
+								if(data.code == 200) {
+									reply_input.blur();
+									reply_input.val("");
+									reply_list.html("");
+									$.each(data.detail, function(index, _data) {
+										var html = '<li class="mui-table-view-cell">' +
+											'<div class="media" style="margin:0 -12px;">' +
+											    '<div class="media-left">' +
+										            '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+											    '</div>' +
+											    '<div class="media-body">' +
+											        '<div class="media-heading">' +
+											            '<p class="small-fade">' +
+											                '<a href="'+_baseUrl+'/user/'+_data.author_id+'">'+_data.nickname+'</a>' +
+											                '<span>'+moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow()+'</span>' +
+											                '<span class="pull-right">'+(index+1)+'楼</span>' +
+											            '</p>' +
+											        '</div>' +
+											        '<div class="media-body reply_content">' +
+											            _data.content +
+											        '</div>' +
+											    '</div>' +
+											'</div>' +
+										'</li>';
+										reply_list.append(html);
+									});
+									mui.toast("回复成功");
+								} else {
+									mui.toast(data.description);
+								}
+							}
+						})
+					}
+				}
+			}
+		</script>
+	</body>
+
+</html>

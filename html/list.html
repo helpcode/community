@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<link href="http://cdn.bootcss.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+		<link rel="stylesheet" href="../css/app.css">
+	</head>
+
+	<body>
+		<!--下拉刷新容器-->
+		<div id="pullrefresh" class="mui-content mui-scroll-wrapper">
+			<div class="mui-scroll">
+				<!--数据列表-->
+				<ul class="mui-table-view" id="topic_list">
+				</ul>
+			</div>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/jquery.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/moment.min.js"></script>
+		<script src="http://cdn.bootcss.com/moment.js/2.11.2/locale/zh-cn.js"></script>
+		<script src="../js/common.js"></script>
+		<script>
+			var index;
+			mui.init({
+				pullRefresh: {
+					container: '#pullrefresh',
+					down: {
+						callback: pulldownRefresh
+					},
+					up: {
+						contentrefresh: '正在加载...',
+						callback: pullupRefresh
+					}
+				}
+			});
+			mui.plusReady(function(){
+				//获得主页面webview引用；
+				index = plus.webview.currentWebview().opener();
+				if(isLogin()) {
+					mui.fire(index, "showCreateTopic");
+				}
+			});
+			var p = 1;
+			function pulldownRefresh() {
+				mui.ajax({
+					type: "get",
+					url: _baseUrl + "/api/index",
+					data: {
+						p: "1",
+						size: "20",
+						tab: plus.storage.getItem(_tab_)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						p = 2;
+						var topic_list = $("#topic_list");
+						topic_list.html("");
+						$.each(data.detail.list, function(index, _data) {
+							var span = getTopicTab(_data);
+							var html = '<li class="mui-table-view-cell">' +
+							    '<div class="media">' +
+							        '<div class="media-left">' +
+						                '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+							        '</div>' +
+							        '<div class="media-body">' +
+							            '<div class="media-heading item-title">' +
+							                '<a href="javascript:topic_detail(\'' + _data.id + '\');">'+_data.title+'</a>' +
+							            '</div>' +
+							            '<p class="small-fade">' +
+							                  '<a class="node" href="javascript:;">'+getTopicTab(_data)+'</a>' +
+							                '• '+_data.reply_count+'个回复 • '+_data.view+'次浏览 • ' + moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow() +
+							            '</p>' +
+							        '</div>' +
+							    '</div>' +
+							'</li>';
+							topic_list.append(html);
+						});
+						mui('#pullrefresh').pullRefresh().endPulldownToRefresh();
+						mui('#pullrefresh').pullRefresh().refresh(true);
+					}
+				});
+			}
+
+			function pullupRefresh() {
+				mui.ajax({
+					type: "get",
+					url: _baseUrl + "/api/index",
+					data: {
+						p: p,
+						size: "20",
+						tab: plus.storage.getItem(_tab_)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						p++;
+						mui('#pullrefresh').pullRefresh().endPullupToRefresh((p > data.detail.totalPage)); //参数为true代表没有更多数据了。
+						var topic_list = $("#topic_list");
+						$.each(data.detail.list, function(index, _data) {
+							var span = getTopicTab(_data);
+							var html = '<li class="mui-table-view-cell">' +
+							    '<div class="media">' +
+							        '<div class="media-left">' +
+						                '<img src="'+_data.avatar+'" alt="avatar" class="media-object avatar">' +
+							        '</div>' +
+							        '<div class="media-body">' +
+							            '<div class="media-heading item-title">' +
+							                '<a href="javascript:topic_detail(\'' + _data.id + '\');">'+_data.title+'</a>' +
+							            '</div>' +
+							            '<p class="small-fade">' +
+							                  '<a class="node" href="javascript:;">'+getTopicTab(_data)+'</a>' +
+							                '• '+_data.reply_count+'个回复 • '+_data.view+'次浏览 • ' + moment(_data.in_time, 'YYYY-MM-DD HH:mm:ss').fromNow() +
+							            '</p>' +
+							        '</div>' +
+							    '</div>' +
+							'</li>';
+							topic_list.append(html);
+						});
+					}
+				});
+			}
+			if (mui.os.plus) {
+				mui.plusReady(function() {
+					setTimeout(function() {
+						mui('#pullrefresh').pullRefresh().pullupLoading();
+					}, 500);
+				});
+			} else {
+				mui.ready(function() {
+					mui('#pullrefresh').pullRefresh().pullupLoading();
+				});
+			}
+		</script>
+	</body>
+
+</html>

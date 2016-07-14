@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<style>
+			.reply_div {
+				position: absolute;
+				bottom: 0;
+				z-index: 999;
+			}
+		</style>
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+			<a href="javascript:collect();" id="collect" class="mui-pull-right mui-hidden">
+				<span class="mui-icon mui-icon-star" id="collect_star"></span>
+			</a>
+			<h1 class="mui-title">详情</h1>
+		</header>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/common.js"></script>
+		<script charset="utf-8">
+			mui.init({
+				subpages: [{
+					id: 'topic-detail_sub.html',
+					url: 'topic-detail_sub.html',
+					styles: {
+						top: '45px',
+						bottom: 0,
+						bounce: 'vertical'
+					},
+					show:{
+						aniShow: 'slide-in-right'
+					}
+				}],
+				gestureConfig: {
+					doubletap: true
+				},
+				swipeBack: true //启用右滑关闭功能
+			});
+			// 1收藏，0没收藏
+			var isCollect = 0;
+			function collect(){
+				var url, collectMsg, className, _isCollect = 0;
+				if(isCollect == 0) {
+					url = _baseUrl + "/api/collect";
+					collectMsg = "收藏成功";
+					className = "mui-icon mui-icon-star mui-icon-star-filled";
+					_isCollect = 0;
+				} else if(isCollect == 1) {
+					url = _baseUrl + "/api/collect/delete";
+					collectMsg = "取消收藏成功";
+					className = "mui-icon mui-icon-star";
+					_isCollect = 1;
+				}
+				mui.ajax({
+					type: "get",
+					url: url,
+					data: {
+						tid: plus.storage.getItem(_topic_id),
+						token: plus.storage.getItem(_user_token)
+					},
+					async: true,
+					dataType: "json",
+					success: function(data) {
+						if(data.code == 200) {
+							if(_isCollect == 0) {
+								isCollect = 1;
+								document.getElementById("collect_star").className = className;
+							} else if(_isCollect == 1) {
+								isCollect = 0;
+								document.getElementById("collect_star").className = className;
+							}
+							mui.toast(collectMsg);
+						} else {
+							mui.toast(data.description);
+						}
+					}
+				});
+			}
+			
+			window.addEventListener("showStar", function(){
+				document.getElementById("collect").className = "mui-pull-right mui-block";
+			});
+			window.addEventListener("starFilled", function(){
+				document.getElementById("collect_star").className = "mui-icon mui-icon-star mui-icon-star-filled";
+			});
+			window.addEventListener("starNotFilled", function(){
+				document.getElementById("collect_star").className = "mui-icon mui-icon-star";
+			});
+			window.addEventListener("collect", function(){
+				isCollect = 1;
+			});
+			window.addEventListener("notCollect", function(){
+				isCollect = 0;
+			});
+		</script>
+	</body>
+
+</html>
